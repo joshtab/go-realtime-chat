@@ -1,10 +1,9 @@
 package main
 
 import (
+	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
-
-	"github.com/gorilla/websocket"
 )
 
 var clients = make(map[*websocket.Conn]bool) // connected clients
@@ -31,6 +30,8 @@ func main() {
 
 	// Configure websocket route
 	http.HandleFunc("/ws", handleConnections)
+
+	http.HandleFunc("/send", sendMessage)
 
 	// Start listening for incoming chat messages
 	go handleMessages()
@@ -83,4 +84,25 @@ func handleMessages() {
 			}
 		}
 	}
+}
+
+func sendMessage(w http.ResponseWriter, r *http.Request) {
+	// TODO: require guard/auth parameter
+
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	r.ParseForm()
+
+	email := r.Form.Get("email")
+	username := r.Form.Get("username")
+	message := r.Form.Get("message")
+
+	if username == "" || email == "" || message == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	broadcast <- Message{email, username, message}
 }
